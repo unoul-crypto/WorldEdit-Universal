@@ -51,13 +51,14 @@ public class BukkitImplLoader {
     private static final String LOAD_ERROR_MESSAGE =
             """
             **********************************************
-            ** This WorldEdit version does not fully support your version of Bukkit.
+            ** No native adapter exists for this Bukkit version.
             **
-            ** When working with blocks or undoing, chests will be empty, signs
-            ** will be blank, and so on. There will be no support for entity
-            ** and block property-related functions.
+            ** WorldEdit will use its universal Bukkit compatibility mode.
+            ** Normal block editing and undo are available, but native-only
+            ** features such as complete block/entity NBT and regeneration
+            ** may be unavailable.
             **
-            ** Please see https://worldedit.enginehub.org/en/latest/faq/#bukkit-adapters
+            ** Install a matching native build for full version-specific support.
             **********************************************
             """;
 

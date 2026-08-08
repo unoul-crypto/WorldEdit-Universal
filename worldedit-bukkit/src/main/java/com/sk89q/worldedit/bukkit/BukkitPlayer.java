@@ -35,9 +35,7 @@ import com.sk89q.worldedit.util.formatting.WorldEditText;
 import com.sk89q.worldedit.util.formatting.component.TextUtils;
 import com.sk89q.worldedit.util.formatting.text.Component;
 import com.sk89q.worldedit.util.formatting.text.TextComponent;
-import com.sk89q.worldedit.util.formatting.text.TranslatableComponent;
 import com.sk89q.worldedit.util.formatting.text.adapter.bukkit.TextAdapter;
-import com.sk89q.worldedit.util.formatting.text.event.ClickEvent;
 import com.sk89q.worldedit.util.formatting.text.format.TextColor;
 import com.sk89q.worldedit.world.World;
 import com.sk89q.worldedit.world.block.BaseBlock;
@@ -146,11 +144,12 @@ public class BukkitPlayer extends AbstractPlayerActor {
     }
 
     @Override
+    @SuppressWarnings("FutureReturnValueIgnored")
     public boolean trySetPosition(Vector3 pos, float pitch, float yaw) {
         Location location = new Location(player.getWorld(), pos.x(), pos.y(),
                 pos.z(), yaw, pitch);
         if (WorldEditPlugin.getInstance().isFolia()) {
-            var _  = PaperLib.teleportAsync(player, location);
+            PaperLib.teleportAsync(player, location);
             return true;
         } else {
             return player.teleport(location);
@@ -230,9 +229,10 @@ public class BukkitPlayer extends AbstractPlayerActor {
     }
 
     @Override
+    @SuppressWarnings("FutureReturnValueIgnored")
     public boolean setLocation(com.sk89q.worldedit.util.Location location) {
         if (WorldEditPlugin.getInstance().isFolia()) {
-            var _  = PaperLib.teleportAsync(player, BukkitAdapter.adapt(location));
+            PaperLib.teleportAsync(player, BukkitAdapter.adapt(location));
             return true;
         } else {
             return player.teleport(BukkitAdapter.adapt(location));
@@ -248,10 +248,10 @@ public class BukkitPlayer extends AbstractPlayerActor {
     @Override
     public void sendAnnouncements() {
         if (!WorldEditPlugin.getInstance().getLifecycledBukkitImplAdapter().isValid()) {
-            printError(TranslatableComponent.of("worldedit.version.bukkit.unsupported-version")
-                .append(TextComponent.newline())
-                .append(TextComponent.of("https://enginehub.org/worldedit/#downloads", TextColor.AQUA).clickEvent(ClickEvent.openUrl("https://enginehub.org/worldedit/#downloads")))
-            );
+            print(TextComponent.of(
+                "WorldEdit is using universal Bukkit compatibility mode; native NBT and regeneration features may be limited.",
+                TextColor.YELLOW
+            ));
         }
     }
 

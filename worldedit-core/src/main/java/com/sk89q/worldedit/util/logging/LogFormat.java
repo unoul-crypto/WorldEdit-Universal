@@ -44,8 +44,8 @@ public class LogFormat extends Formatter {
         }
         try {
             // Validate format:
-            @SuppressWarnings("unused")
-            var _  = String.format(format, currentDateTime, "", "", "", "", "");
+            @SuppressWarnings({"unused", "UnusedVariable"})
+            var ignoredFormattedMessage = String.format(format, currentDateTime, "", "", "", "", "");
         } catch (IllegalArgumentException var3) {
             format = DEFAULT_FORMAT;
         }

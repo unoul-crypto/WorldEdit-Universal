@@ -19,6 +19,9 @@
 
 package com.sk89q.worldedit.world.block;
 
+import com.sk89q.worldedit.WorldEdit;
+import com.sk89q.worldedit.extension.platform.Capability;
+
 import javax.annotation.Nullable;
 
 /**
@@ -1237,6 +1240,17 @@ public final class BlockTypes {
      * Gets the {@link BlockType} associated with the given id.
      */
     public static @Nullable BlockType get(String id) {
-        return BlockType.REGISTRY.get(id);
+        BlockType blockType = BlockType.REGISTRY.get(id);
+        if (blockType != null) {
+            return blockType;
+        }
+        if (!WorldEdit.getInstance().getPlatformManager().isInitialized()) {
+            return null;
+        }
+        return WorldEdit.getInstance().getPlatformManager()
+                .queryCapability(Capability.GAME_HOOKS)
+                .getRegistries()
+                .getBlockRegistry()
+                .resolveBlockType(id);
     }
 }

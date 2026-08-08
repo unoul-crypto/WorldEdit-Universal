@@ -39,7 +39,6 @@ import com.sk89q.worldedit.world.biome.BiomeTypes;
 import com.sk89q.worldedit.world.block.BlockState;
 import com.sk89q.worldedit.world.block.BlockStateHolder;
 import com.sk89q.worldedit.world.block.BlockType;
-import com.sk89q.worldedit.world.block.BlockTypes;
 import com.sk89q.worldedit.world.entity.EntityType;
 import com.sk89q.worldedit.world.entity.EntityTypes;
 import com.sk89q.worldedit.world.gamemode.GameMode;
@@ -63,7 +62,9 @@ import org.bukkit.inventory.ItemStack;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import javax.annotation.Nullable;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -328,8 +329,7 @@ public class BukkitAdapter {
      */
     public static Material adapt(ItemType itemType) {
         checkNotNull(itemType);
-        NamespacedKey key = checkNotNull(NamespacedKey.fromString(itemType.id()), "Item type key is invalid");
-        return Registry.MATERIAL.get(key);
+        return BukkitDynamicRegistries.resolveMaterial(itemType.id());
     }
 
     /**
@@ -340,8 +340,7 @@ public class BukkitAdapter {
      */
     public static Material adapt(BlockType blockType) {
         checkNotNull(blockType);
-        NamespacedKey key = checkNotNull(NamespacedKey.fromString(blockType.id()), "Block type key is invalid");
-        return Registry.MATERIAL.get(key);
+        return BukkitDynamicRegistries.resolveMaterial(blockType.id());
     }
 
     /**
@@ -412,7 +411,13 @@ public class BukkitAdapter {
     @Nullable
     public static BlockType asBlockType(Material material) {
         checkNotNull(material);
-        return materialBlockTypeCache.computeIfAbsent(material, input -> BlockTypes.get(material.getKey().toString()));
+        if (!material.isBlock()) {
+            return null;
+        }
+        return materialBlockTypeCache.computeIfAbsent(
+                material,
+                input -> BukkitDynamicRegistries.resolveBlockType(material.createBlockData())
+        );
     }
 
     /**
@@ -431,6 +436,7 @@ public class BukkitAdapter {
         new Int2ObjectOpenHashMap<>()
     );
     private static final Map<String, BlockState> blockStateStringCache = new ConcurrentHashMap<>();
+    private static final Set<String> warnedGenericStates = ConcurrentHashMap.newKeySet();
 
     /**
      * Create a WorldEdit BlockState from a Bukkit BlockData.
@@ -443,28 +449,40 @@ public class BukkitAdapter {
 
         BukkitImplAdapter adapter = WorldEditPlugin.getInstance().getBukkitImplAdapter();
         if (adapter == null) {
-            return blockStateStringCache.computeIfAbsent(blockData.getAsString(), input -> {
-                try {
-                    return WorldEdit.getInstance().getBlockFactory().parseFromInput(input, TO_BLOCK_CONTEXT).toImmutableState();
-                } catch (InputParseException e) {
-                    e.printStackTrace();
-                    return null;
-                }
-            });
+            return blockStateStringCache.computeIfAbsent(
+                    blockData.getAsString(),
+                    input -> parseBlockState(blockData, input)
+            );
         } else {
             return blockStateCache.computeIfAbsent(
                 adapter.getInternalBlockStateId(blockData).orElseGet(
                     () -> blockData.getAsString().hashCode()
                 ),
-                input -> {
-                    try {
-                        return WorldEdit.getInstance().getBlockFactory().parseFromInput(blockData.getAsString(), TO_BLOCK_CONTEXT).toImmutableState();
-                    } catch (InputParseException e) {
-                        e.printStackTrace();
-                        return null;
-                    }
-                });
+                input -> parseBlockState(blockData, blockData.getAsString()));
         }
+    }
+
+    private static BlockState parseBlockState(BlockData blockData, String serialized) {
+        BlockType blockType = BukkitDynamicRegistries.resolveBlockType(blockData);
+        try {
+            return WorldEdit.getInstance().getBlockFactory()
+                    .parseFromInput(serialized, TO_BLOCK_CONTEXT)
+                    .toImmutableState();
+        } catch (InputParseException e) {
+            if (warnedGenericStates.add(serialized)) {
+                WorldEditPlugin.getInstance().getLogger().log(
+                        Level.WARNING,
+                        "Could not preserve every property of Bukkit block state " + serialized
+                                + "; using its default state instead.",
+                        e
+                );
+            }
+            return blockType.getDefaultState();
+        }
+    }
+
+    static BlockType getOrRegisterBlockType(BlockData blockData) {
+        return BukkitDynamicRegistries.resolveBlockType(blockData);
     }
 
     private static final Int2ObjectMap<BlockData> blockDataCache = Int2ObjectMaps.synchronize(new Int2ObjectOpenHashMap<>());

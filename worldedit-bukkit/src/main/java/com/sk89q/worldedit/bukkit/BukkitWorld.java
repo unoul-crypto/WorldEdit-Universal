@@ -27,7 +27,6 @@ import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.blocks.BaseItem;
 import com.sk89q.worldedit.blocks.BaseItemStack;
 import com.sk89q.worldedit.bukkit.adapter.BukkitImplAdapter;
-import com.sk89q.worldedit.bukkit.adapter.UnsupportedVersionEditException;
 import com.sk89q.worldedit.entity.BaseEntity;
 import com.sk89q.worldedit.extent.Extent;
 import com.sk89q.worldedit.function.mask.Mask;
@@ -42,6 +41,7 @@ import com.sk89q.worldedit.util.Direction;
 import com.sk89q.worldedit.util.SideEffect;
 import com.sk89q.worldedit.util.SideEffectSet;
 import com.sk89q.worldedit.util.TreeGenerator;
+import com.sk89q.worldedit.util.concurrency.LazyReference;
 import com.sk89q.worldedit.util.formatting.text.TranslatableComponent;
 import com.sk89q.worldedit.world.AbstractWorld;
 import com.sk89q.worldedit.world.RegenOptions;
@@ -53,17 +53,15 @@ import com.sk89q.worldedit.world.generation.StructureType;
 import com.sk89q.worldedit.world.generation.WorldEditTreeGeneration;
 import com.sk89q.worldedit.world.weather.WeatherType;
 import com.sk89q.worldedit.world.weather.WeatherTypes;
-import io.papermc.lib.PaperLib;
 import org.apache.logging.log4j.Logger;
+import org.bukkit.BlockChangeDelegate;
 import org.bukkit.Effect;
 import org.bukkit.TreeType;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
-import org.bukkit.block.Chest;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Entity;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
+import org.enginehub.linbus.tree.LinCompoundTag;
 
 import java.lang.ref.WeakReference;
 import java.nio.file.Path;
@@ -74,7 +72,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -228,22 +225,8 @@ public class BukkitWorld extends AbstractWorld {
             }
         }
 
-        if (!getBlock(pt).getBlockType().getMaterial().hasContainer()) {
-            return false;
-        }
-
         Block block = getWorld().getBlockAt(pt.x(), pt.y(), pt.z());
-        BlockState state = PaperLib.isPaper() ? block.getState(false) : block.getState();
-        if (!(state instanceof InventoryHolder inventoryHolder)) {
-            return false;
-        }
-
-        Inventory inven = inventoryHolder.getInventory();
-        if (inventoryHolder instanceof Chest chest) {
-            inven = chest.getBlockInventory();
-        }
-        inven.clear();
-        return true;
+        return BukkitBlockEntitySupport.clearInventory(block);
     }
 
     /**
@@ -299,20 +282,37 @@ public class BukkitWorld extends AbstractWorld {
         }
         return type != null && world.generateTree(
             BukkitAdapter.adapt(world, pt),
-            ThreadLocalRandom.current(),
             bukkitType,
-            block -> {
-                Mask mask = editSession.getMask();
-                var blockVector = BukkitAdapter.asBlockVector(block.getLocation());
-                if (mask != null && !mask.test(blockVector)) {
-                    return false;
+            new BlockChangeDelegate() {
+                @Override
+                public boolean setBlockData(int x, int y, int z, BlockData blockData) {
+                    BlockVector3 blockVector = BlockVector3.at(x, y, z);
+                    Mask mask = editSession.getMask();
+                    if (mask != null && !mask.test(blockVector)) {
+                        return false;
+                    }
+                    try {
+                        return editSession.setBlock(blockVector, BukkitAdapter.adapt(blockData));
+                    } catch (MaxChangedBlocksException ignored) {
+                        // It's fine, we just stop generating.
+                        return false;
+                    }
                 }
-                try {
-                    editSession.setBlock(blockVector, BukkitAdapter.adapt(block.getBlockData()));
-                } catch (MaxChangedBlocksException ignored) {
-                    // It's fine, we just stop generating.
+
+                @Override
+                public BlockData getBlockData(int x, int y, int z) {
+                    return world.getBlockAt(x, y, z).getBlockData();
                 }
-                return false;
+
+                @Override
+                public int getHeight() {
+                    return world.getMaxHeight();
+                }
+
+                @Override
+                public boolean isEmpty(int x, int y, int z) {
+                    return world.getBlockAt(x, y, z).isEmpty();
+                }
             }
         );
     }
@@ -372,7 +372,14 @@ public class BukkitWorld extends AbstractWorld {
 
     @Override
     public int getMinY() {
-        return getWorld().getMinHeight();
+        try {
+            // Spigot 1.16.x does not expose World#getMinHeight on every fork.
+            // Avoid linking the method directly so hybrid implementations can
+            // still load the plugin and use the traditional zero minimum.
+            return (int) getWorld().getClass().getMethod("getMinHeight").invoke(getWorld());
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            return 0;
+        }
     }
 
     @Override
@@ -506,20 +513,28 @@ public class BukkitWorld extends AbstractWorld {
                 }
             }
         }
-        if (WorldEditPlugin.getInstance().getLocalConfiguration().unsupportedVersionEditing) {
-            Block bukkitBlock = getWorld().getBlockAt(position.x(), position.y(), position.z());
-            return BukkitAdapter.adapt(bukkitBlock.getBlockData());
-        } else {
-            throw new RuntimeException(new UnsupportedVersionEditException());
-        }
+        Block bukkitBlock = getWorld().getBlockAt(position.x(), position.y(), position.z());
+        return BukkitAdapter.adapt(bukkitBlock.getBlockData());
     }
 
     @Override
     public <B extends BlockStateHolder<B>> boolean setBlock(BlockVector3 position, B block, SideEffectSet sideEffects) {
         clearContainerBlockContents(position);
+        LinCompoundTag genericInventoryData = null;
+        if (block instanceof BaseBlock baseBlock) {
+            LinCompoundTag nbt = baseBlock.getNbt();
+            if (BukkitBlockEntitySupport.hasInventoryData(nbt)) {
+                genericInventoryData = nbt;
+            }
+        }
         if (worldNativeAccess != null) {
             try {
-                return worldNativeAccess.setBlock(position, block, sideEffects);
+                boolean changed = worldNativeAccess.setBlock(position, block, sideEffects);
+                if (changed && genericInventoryData != null) {
+                    Block bukkitBlock = getWorld().getBlockAt(position.x(), position.y(), position.z());
+                    BukkitBlockEntitySupport.restoreInventory(bukkitBlock, genericInventoryData);
+                }
+                return changed;
             } catch (Exception e) {
                 if (block instanceof BaseBlock baseBlock && baseBlock.getNbt() != null) {
                     LOGGER.warn("Tried to set a corrupt tile entity at " + position.toString()
@@ -529,13 +544,12 @@ public class BukkitWorld extends AbstractWorld {
                 }
             }
         }
-        if (WorldEditPlugin.getInstance().getLocalConfiguration().unsupportedVersionEditing) {
-            Block bukkitBlock = getWorld().getBlockAt(position.x(), position.y(), position.z());
-            bukkitBlock.setBlockData(BukkitAdapter.adapt(block), sideEffects.doesApplyAny());
-            return true;
-        } else {
-            throw new RuntimeException(new UnsupportedVersionEditException());
+        Block bukkitBlock = getWorld().getBlockAt(position.x(), position.y(), position.z());
+        bukkitBlock.setBlockData(BukkitAdapter.adapt(block), sideEffects.doesApplyAny());
+        if (genericInventoryData != null) {
+            BukkitBlockEntitySupport.restoreInventory(bukkitBlock, genericInventoryData);
         }
+        return true;
     }
 
     @Override
@@ -544,7 +558,13 @@ public class BukkitWorld extends AbstractWorld {
         if (adapter != null) {
             return adapter.getFullBlock(BukkitAdapter.adapt(getWorld(), position));
         } else {
-            return getBlock(position).toBaseBlock();
+            Block bukkitBlock = getWorld().getBlockAt(position.x(), position.y(), position.z());
+            LinCompoundTag inventoryData = BukkitBlockEntitySupport.captureInventory(bukkitBlock);
+            if (inventoryData == null) {
+                return BukkitAdapter.adapt(bukkitBlock.getBlockData()).toBaseBlock();
+            }
+            return BukkitAdapter.adapt(bukkitBlock.getBlockData())
+                    .toBaseBlock(LazyReference.computed(inventoryData));
         }
     }
 

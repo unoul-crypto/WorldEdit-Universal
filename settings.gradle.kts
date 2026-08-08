@@ -120,17 +120,17 @@ includeBuild("build-logic")
 
 include("worldedit-libs")
 
-listOf("1.21.4", "1.21.5", "1.21.6", "1.21.9", "1.21.11", "26.1", "26.2").forEach {
+// The universal Bukkit distribution targets Java 21. Minecraft 26.x adapters
+// require Java 25, so those versions use the API-only compatibility path.
+listOf("1.21.4", "1.21.5", "1.21.6", "1.21.9", "1.21.11").forEach {
     include("worldedit-bukkit:adapters:adapter-$it")
 }
 
-listOf("bukkit", "core", "core-mc", "fabric", "neoforge", "sponge", "cli").forEach {
+// This distribution is intentionally scoped to Bukkit-compatible servers.
+// Configuring the mod-loader projects also resolves Minecraft 26.x tooling,
+// even when only the Bukkit JAR is requested.
+listOf("bukkit", "core", "core-mc").forEach {
     include("worldedit-libs:$it")
     include("worldedit-$it")
 }
-include("worldedit-mod")
 include("worldedit-libs:core:ap")
-
-include("worldedit-core:doctools")
-
-include("verification")

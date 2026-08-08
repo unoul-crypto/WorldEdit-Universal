@@ -34,6 +34,20 @@ import javax.annotation.Nullable;
 public interface BlockRegistry {
 
     /**
+     * Resolve and, if necessary, register a platform block type by its namespaced ID.
+     *
+     * <p>Platforms with dynamic registries, such as hybrid modded servers, can expose
+     * blocks which were not present while WorldEdit was starting.</p>
+     *
+     * @param id namespaced block ID
+     * @return the resolved block type, or null when the platform does not know it
+     */
+    @Nullable
+    default BlockType resolveBlockType(String id) {
+        return null;
+    }
+
+    /**
      * Gets the name for the given block.
      *
      * @param blockType the block

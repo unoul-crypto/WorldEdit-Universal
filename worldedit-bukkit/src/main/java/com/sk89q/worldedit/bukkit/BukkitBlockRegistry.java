@@ -36,6 +36,13 @@ import javax.annotation.Nullable;
 
 public class BukkitBlockRegistry implements BlockRegistry {
     private final Map<Material, BukkitBlockMaterial> materialMap = new HashMap<>();
+    private final BukkitBlockStateProperties genericProperties = new BukkitBlockStateProperties();
+
+    @Nullable
+    @Override
+    public BlockType resolveBlockType(String id) {
+        return BukkitDynamicRegistries.resolveBlockType(id);
+    }
 
     @Override
     public Component getRichName(BlockType blockType) {
@@ -61,13 +68,16 @@ public class BukkitBlockRegistry implements BlockRegistry {
         });
     }
 
-    @Nullable
     @Override
     public Map<String, ? extends Property<?>> getProperties(BlockType blockType) {
         if (WorldEditPlugin.getInstance().getBukkitImplAdapter() != null) {
-            return WorldEditPlugin.getInstance().getBukkitImplAdapter().getProperties(blockType);
+            Map<String, ? extends Property<?>> nativeProperties =
+                    WorldEditPlugin.getInstance().getBukkitImplAdapter().getProperties(blockType);
+            if (nativeProperties != null) {
+                return nativeProperties;
+            }
         }
-        return null;
+        return genericProperties.get(BukkitAdapter.adapt(blockType));
     }
 
     @Override

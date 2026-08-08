@@ -94,6 +94,10 @@ val shadeReobfAdapters = tasks.register<ShadowJar>("shadeReobfAdapters") {
 }
 
 tasks.named<ShadowJar>("shadowJar") {
+    // The shaded artifact is the deployable server plugin. Keep the ordinary
+    // filename for it so administrators cannot accidentally install the thin
+    // development JAR, which does not contain worldedit-core.
+    archiveClassifier.set("")
     from(zipTree(shadeReobfAdapters.map { it.archiveFile }))
     configurations.add(project.configurations.named("runtimeClasspath"))
     configurations.add(adapters.get())
@@ -128,6 +132,10 @@ tasks.named<ShadowJar>("shadowJar") {
     manifest {
         attributes["paperweight-mappings-namespace"] = "mojang"
     }
+}
+
+tasks.named<Jar>("jar") {
+    archiveClassifier.set("dev")
 }
 
 tasks.named("assemble").configure {

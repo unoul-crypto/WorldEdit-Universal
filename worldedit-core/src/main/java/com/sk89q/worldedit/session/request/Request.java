@@ -23,6 +23,7 @@ import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.LocalSession;
 import com.sk89q.worldedit.world.World;
 
+import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
 
@@ -31,7 +32,7 @@ import javax.annotation.Nullable;
  */
 public final class Request {
 
-    private static final ScopedValue<Request> CURRENT_REQUEST = ScopedValue.newInstance();
+    private static final ThreadLocal<Request> CURRENT_REQUEST = new ThreadLocal<>();
 
     private @Nullable World world;
     private @Nullable LocalSession session;
@@ -101,7 +102,11 @@ public final class Request {
      * @return the current request
      */
     public static Request request() {
-        return CURRENT_REQUEST.get();
+        Request request = CURRENT_REQUEST.get();
+        if (request == null) {
+            throw new NoSuchElementException("No request is active on the current thread");
+        }
+        return request;
     }
 
     /**
@@ -111,8 +116,9 @@ public final class Request {
      * @param func the function to apply to the current request
      */
     public static void applyIfPresent(Consumer<Request> func) {
-        if (CURRENT_REQUEST.isBound()) {
-            func.accept(request());
+        Request request = CURRENT_REQUEST.get();
+        if (request != null) {
+            func.accept(request);
         }
     }
 
@@ -122,12 +128,19 @@ public final class Request {
      * @param runnable the task to run
      */
     public static void runWithRequest(Runnable runnable) {
+        Request previous = CURRENT_REQUEST.get();
         Request request = new Request();
         request.valid = true;
+        CURRENT_REQUEST.set(request);
         try {
-            ScopedValue.where(CURRENT_REQUEST, request).run(runnable);
+            runnable.run();
         } finally {
             request.invalidate();
+            if (previous == null) {
+                CURRENT_REQUEST.remove();
+            } else {
+                CURRENT_REQUEST.set(previous);
+            }
         }
     }
 

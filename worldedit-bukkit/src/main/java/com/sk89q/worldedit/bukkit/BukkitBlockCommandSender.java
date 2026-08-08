@@ -154,6 +154,7 @@ public class BukkitBlockCommandSender extends AbstractCommandBlockActor {
             }
 
             @Override
+            @SuppressWarnings("FutureReturnValueIgnored")
             public boolean isActive() {
                 if (WorldEditPlugin.getInstance().isFolia()) {
                     // On Folia, we need to perform the update on the thread that owns the block.
@@ -174,7 +175,7 @@ public class BukkitBlockCommandSender extends AbstractCommandBlockActor {
                 } else {
                     // we should update it eventually
                     // We don't need the future as we handle exceptions in `updateActive`
-                    var _  = Bukkit.getScheduler().callSyncMethod(plugin, () -> {
+                    Bukkit.getScheduler().callSyncMethod(plugin, () -> {
                         updateActive();
                         return null;
                     });

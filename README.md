@@ -10,6 +10,82 @@
 
 Java Edition required. WorldEdit is compatible with NeoForge, Fabric, Bukkit, Spigot, Paper, and Sponge.
 
+## WorldEdit Universal
+
+WorldEdit Universal is a Bukkit-focused fork that keeps the modern WorldEdit
+codebase usable on a wider range of server versions. It targets Java 21 and the
+stable Bukkit 1.16 API while retaining native adapters for server versions where
+a matching adapter is available.
+
+The generic compatibility path is intended for Spigot-derived servers and
+hybrid Bukkit/Forge implementations such as Mohist and Youer. It does not depend
+on Paper API.
+
+### Changes in this fork
+
+* Added a central dynamic block registry for namespaced mod IDs. Unknown IDs are
+  resolved through Bukkit `BlockData` and cached as WorldEdit `BlockType` and
+  Bukkit `Material` mappings. This is shared by command parsing, block editing,
+  clipboard operations, undo/redo, and third-party integrations instead of being
+  implemented separately for every command.
+* Added generic Bukkit block-state property discovery. Modded boolean, integer,
+  directional, and enum properties can be preserved without a version-specific
+  NMS adapter.
+* Added API-only block editing for unsupported server versions. Commands such as
+  `//set`, `//replace`, `//copy`, `//paste`, `//undo`, and `//redo` continue to
+  work when no native adapter is available.
+* Added generic inventory serialization for copied containers. Bukkit inventory
+  contents are stored in clipboard NBT and restored during paste operations.
+* Fixed modded block conversion used by CoreProtect-compatible WorldEdit logging.
+  A dynamically discovered mod block no longer becomes a `null` Bukkit material
+  during undo or redo.
+* Made block property initialization tolerate third-party registries returning
+  no property map, preventing platform startup failures on hybrid servers.
+* Restored compatibility with the Bukkit 1.16 tree-generation API and removed
+  mandatory modern Paper API references from the universal path.
+* The full shaded plugin is now the normal build artifact. The smaller `-dev.jar`
+  remains available only for development and does not contain WorldEdit core.
+
+### Compatibility and limitations
+
+* Runtime: Java 21.
+* Bukkit API baseline: Spigot 1.16.5 (`api-version: 1.16`).
+* Intended server range: Bukkit, Spigot, Paper, Mohist, Youer, and compatible
+  derivatives from Minecraft 1.16.5 onward.
+* Hybrid support requires the server to expose a modded block through Bukkit
+  `BlockData`/`Material`. This is the normal behavior on supported Mohist-style
+  implementations.
+* When no native adapter is available, complete arbitrary block-entity NBT,
+  entity internals, native structure generation, and region regeneration may be
+  unavailable. Container inventories have a dedicated generic fallback.
+
+### Installation
+
+1. Stop the server completely.
+2. Remove older or duplicate WorldEdit JARs from the `plugins` directory.
+3. Copy `worldedit-bukkit-7.4.5-universal-SNAPSHOT.jar` into `plugins`.
+4. Start the server on Java 21.
+
+### Building
+
+The build currently uses JDK 25 tooling and emits Java 21-compatible bytecode.
+Build the distributable Bukkit plugin with:
+
+```powershell
+$env:JAVA_HOME = 'C:\path\to\jdk-25'
+.\gradlew.bat :worldedit-bukkit:shadowJar
+```
+
+On Linux or macOS:
+
+```bash
+export JAVA_HOME=/path/to/jdk-25
+./gradlew :worldedit-bukkit:shadowJar
+```
+
+The deployable plugin is written to `worldedit-bukkit/build/libs` without a
+classifier. Do not install the `-dev.jar` on a server.
+
 ## Download WorldEdit
 
 This place contains the Java code for WorldEdit, but if you want to just use WorldEdit, get the mod or plugin from Modrinth:

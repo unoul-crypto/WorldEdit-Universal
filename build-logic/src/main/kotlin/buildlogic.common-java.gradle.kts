@@ -10,6 +10,7 @@ plugins {
 }
 
 crankcaseJava {
+    // Build tooling and annotation processors in this branch require JDK 25.
     javaRelease = 25
     disabledLints = listOf("processing", "path", "fallthrough", "serial", "overloads")
     disabledErrorprone = listOf(
@@ -21,6 +22,13 @@ crankcaseJava {
         // We're on JDK 21, so System.console() can still be null
         "SystemConsoleNull",
     )
+}
+
+// The compiler runs on JDK 25, but emitted plugin classes remain loadable on
+// Java 21. This is separate from crankcaseJava.javaRelease because Piston's
+// annotation processor itself has Java 25 bytecode.
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(21)
 }
 
 crankcaseCheckstyle {

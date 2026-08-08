@@ -163,8 +163,9 @@ public final class AsyncCommandBuilder<T> {
      *
      * @param executor the executor to run the task on
      */
+    @SuppressWarnings("FutureReturnValueIgnored")
     public void buildAndExecNoReturnValue(ListeningExecutorService executor) {
-        var _ = buildAndExec(executor);
+        buildAndExec(executor);
     }
 
     @SuppressWarnings("deprecation")

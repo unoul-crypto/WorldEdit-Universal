@@ -61,8 +61,6 @@ import com.sk89q.worldedit.world.entity.EntityType;
 import com.sk89q.worldedit.world.item.ItemCategory;
 import com.sk89q.worldedit.world.item.ItemType;
 import io.papermc.lib.PaperLib;
-import io.papermc.paper.ServerBuildInfo;
-import net.kyori.adventure.key.Key;
 import org.apache.logging.log4j.Logger;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
@@ -521,34 +519,12 @@ public class WorldEditPlugin extends JavaPlugin implements TabCompleter {
 
     private final LazyReference<Boolean> folia = LazyReference.from(() -> {
         try {
-            // Folia is Paper-based, so this is a good first check.
-            if (PaperLib.isPaper()) {
-                // Then we can check against the `papermc:folia` key, as per the `isBrandCompatible` javadoc.
-                // This API is experimental so might randomly break on us (hence the try/catch)
-                if (ServerBuildInfo.buildInfo().isBrandCompatible(Key.key("papermc", "folia"))) {
-                    return true;
-                }
-            }
-        } catch (Throwable t) {
-            // Ignore, this likely means an outdated version.
-            LOGGER.warn("Failed to check if server is running Folia", t);
-        }
-
-        boolean hiddenFoliaCheckPassed = false;
-
-        try {
             Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
-            hiddenFoliaCheckPassed = true;
+            return true;
         } catch (ClassNotFoundException ignored) {
             // This is a class existence check, it's fine if not present.
+            return false;
         }
-
-        if (hiddenFoliaCheckPassed) {
-            LOGGER.warn("Server platform not marked as Folia-based, but appears to have Folia-specific code. Assuming this server is running Folia. This check is fragile, please tell the author of your server software to report that it is compatible with the `papermc:folia` brand.");
-            return true;
-        }
-
-        return false;
     });
 
     /**

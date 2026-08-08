@@ -74,11 +74,12 @@ class BukkitEntity implements Entity {
     }
 
     @Override
+    @SuppressWarnings("FutureReturnValueIgnored")
     public boolean setLocation(Location location) {
         org.bukkit.entity.Entity entity = entityRef.get();
         if (entity != null) {
             if (WorldEditPlugin.getInstance().isFolia()) {
-                var _  = PaperLib.teleportAsync(entity, BukkitAdapter.adapt(location));
+                PaperLib.teleportAsync(entity, BukkitAdapter.adapt(location));
                 return true;
             } else {
                 return entity.teleport(BukkitAdapter.adapt(location));

@@ -35,6 +35,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -49,6 +50,11 @@ public class BlockType implements Keyed {
     private static Map<String, ? extends Property<?>> computeProperties(BlockType self) {
         Map<String, ? extends Property<?>> propertiesMap = WorldEdit.getInstance().getPlatformManager()
             .queryCapability(Capability.GAME_HOOKS).getRegistries().getBlockRegistry().getProperties(self);
+        if (propertiesMap == null) {
+            // Some third-party platform implementations still follow the old nullable contract.
+            // A block without exposed properties is valid; failing the entire platform startup is not.
+            propertiesMap = Collections.emptyMap();
+        }
         String[] propertyNames = propertiesMap.keySet().toArray(new String[0]);
         Arrays.sort(propertyNames);
         Object[] properties = new Object[propertyNames.length];

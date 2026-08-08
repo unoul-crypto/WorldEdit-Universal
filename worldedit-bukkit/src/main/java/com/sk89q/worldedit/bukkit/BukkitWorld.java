@@ -104,6 +104,7 @@ public class BukkitWorld extends AbstractWorld {
         if (adapter != null) {
             this.worldNativeAccess = adapter.createWorldNativeAccess(world);
         } else {
+            BukkitTreeTypeSupport.initialize();
             this.worldNativeAccess = null;
         }
     }
@@ -280,8 +281,13 @@ public class BukkitWorld extends AbstractWorld {
         if (bukkitType == TreeType.CHORUS_PLANT) {
             pt = pt.add(0, 1, 0); // bukkit skips the feature gen which does this offset normally, so we have to add it back
         }
-        return type != null && world.generateTree(
-            BukkitAdapter.adapt(world, pt),
+        return type != null && generateBukkitTree(world, bukkitType, editSession, pt);
+    }
+
+    private boolean generateBukkitTree(World world, TreeType bukkitType,
+                                       EditSession editSession, BlockVector3 position) {
+        return world.generateTree(
+            BukkitAdapter.adapt(world, position),
             bukkitType,
             new BlockChangeDelegate() {
                 @Override
@@ -327,8 +333,8 @@ public class BukkitWorld extends AbstractWorld {
         if (adapter != null) {
             return adapter.generateTree(type, getWorld(), editSession, position);
         }
-        // No adapter, we can't generate this.
-        return false;
+        TreeType bukkitType = BukkitTreeTypeSupport.resolve(type);
+        return bukkitType != null && generateBukkitTree(getWorld(), bukkitType, editSession, position);
     }
 
     @Override

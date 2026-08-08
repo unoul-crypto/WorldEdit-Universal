@@ -42,7 +42,9 @@ on Paper API.
 * Made block property initialization tolerate third-party registries returning
   no property map, preventing platform startup failures on hybrid servers.
 * Restored compatibility with the Bukkit 1.16 tree-generation API and removed
-  mandatory modern Paper API references from the universal path.
+  mandatory modern Paper API references from the universal path. Generic tree
+  type registration keeps `//forest oak 10` and the legacy `tree` alias working
+  when no native adapter is available.
 * The full shaded plugin is now the normal build artifact. The smaller `-dev.jar`
   remains available only for development and does not contain WorldEdit core.
 

@@ -27,6 +27,11 @@ import com.sk89q.worldedit.world.registry.BundledItemRegistry;
 @SuppressWarnings("removal")
 class BukkitItemRegistry extends BundledItemRegistry {
     @Override
+    public ItemType resolveItemType(String id) {
+        return BukkitDynamicRegistries.resolveItemType(id);
+    }
+
+    @Override
     public Component getRichName(ItemType itemType) {
         if (WorldEditPlugin.getInstance().getBukkitImplAdapter() != null) {
             return WorldEditPlugin.getInstance().getBukkitImplAdapter().getRichItemName(itemType);

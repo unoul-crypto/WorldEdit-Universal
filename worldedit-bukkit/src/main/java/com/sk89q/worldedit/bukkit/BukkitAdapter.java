@@ -429,7 +429,7 @@ public class BukkitAdapter {
     @Nullable
     public static ItemType asItemType(Material material) {
         checkNotNull(material);
-        return materialItemTypeCache.computeIfAbsent(material, input -> ItemTypes.get(material.getKey().toString()));
+        return materialItemTypeCache.computeIfAbsent(material, BukkitDynamicRegistries::resolveItemType);
     }
 
     private static final Int2ObjectMap<BlockState> blockStateCache = Int2ObjectMaps.synchronize(
@@ -530,7 +530,7 @@ public class BukkitAdapter {
         if (adapter != null) {
             return adapter.adapt(itemStack);
         }
-        return new BaseItemStack(ItemTypes.get(itemStack.getType().getKey().toString()), itemStack.getAmount());
+        return new BaseItemStack(asItemType(itemStack.getType()), itemStack.getAmount());
     }
 
     /**

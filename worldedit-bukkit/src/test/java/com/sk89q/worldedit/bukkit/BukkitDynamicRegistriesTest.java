@@ -19,11 +19,17 @@
 
 package com.sk89q.worldedit.bukkit;
 
+import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.world.block.BlockType;
+import com.sk89q.worldedit.world.item.ItemType;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -41,5 +47,41 @@ class BukkitDynamicRegistriesTest {
         BukkitDynamicRegistries.remember(moddedMaterial);
 
         assertSame(moddedMaterial, BukkitAdapter.adapt(moddedBlockType));
+    }
+
+    @Test
+    void bridgesDynamicallyDiscoveredMaterialBackToItsItemType() {
+        Material moddedMaterial = mock(Material.class);
+        ItemType moddedItemType = mock(ItemType.class);
+
+        when(moddedMaterial.getKey()).thenReturn(new NamespacedKey("worldedit_test", "tool"));
+        when(moddedItemType.id()).thenReturn("worldedit_test:tool");
+
+        BukkitDynamicRegistries.remember(moddedMaterial);
+
+        assertSame(moddedMaterial, BukkitAdapter.adapt(moddedItemType));
+    }
+
+    @Test
+    void registersUnknownModdedItemForIdBasedConsumers() throws ReflectiveOperationException {
+        Material moddedMaterial = mock(Material.class);
+        when(moddedMaterial.getKey()).thenReturn(new NamespacedKey("worldedit_test", "dynamic_tool"));
+
+        Field initializedField = WorldEdit.getInstance().getPlatformManager()
+                .getClass().getDeclaredField("initialized");
+        initializedField.setAccessible(true);
+        AtomicBoolean initialized = (AtomicBoolean) initializedField.get(
+                WorldEdit.getInstance().getPlatformManager()
+        );
+        boolean previous = initialized.getAndSet(true);
+        try {
+            ItemType registered = BukkitDynamicRegistries.resolveItemType(moddedMaterial);
+
+            assertEquals("worldedit_test:dynamic_tool", registered.id());
+            assertSame(registered, BukkitDynamicRegistries.resolveItemType("worldedit_test:dynamic_tool"));
+            assertSame(moddedMaterial, BukkitAdapter.adapt(registered));
+        } finally {
+            initialized.set(previous);
+        }
     }
 }

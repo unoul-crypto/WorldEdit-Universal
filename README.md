@@ -23,11 +23,11 @@ on Paper API.
 
 ### Changes in this fork
 
-* Added a central dynamic block registry for namespaced mod IDs. Unknown IDs are
-  resolved through Bukkit `BlockData` and cached as WorldEdit `BlockType` and
-  Bukkit `Material` mappings. This is shared by command parsing, block editing,
-  clipboard operations, undo/redo, and third-party integrations instead of being
-  implemented separately for every command.
+* Added central dynamic block and item registries for namespaced mod IDs. Unknown
+  IDs are resolved through Bukkit `BlockData`/`Material` and cached as WorldEdit
+  `BlockType`/`ItemType` mappings. This is shared by command parsing, block
+  editing, held-item handling, clipboard operations, undo/redo, WorldGuard, and
+  other integrations instead of being implemented separately for every command.
 * Added generic Bukkit block-state property discovery. Modded boolean, integer,
   directional, and enum properties can be preserved without a version-specific
   NMS adapter.

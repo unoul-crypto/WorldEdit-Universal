@@ -20,6 +20,7 @@
 package com.sk89q.worldedit.bukkit;
 
 import com.sk89q.worldedit.world.block.BlockType;
+import com.sk89q.worldedit.world.item.ItemType;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -62,19 +63,23 @@ final class BukkitDynamicRegistries {
         if (key != null) {
             try {
                 material = Registry.MATERIAL.get(key);
-            } catch (IllegalArgumentException | LinkageError ignored) {
+            } catch (RuntimeException | LinkageError ignored) {
                 // The hybrid registry may reject a valid Forge ID here.
             }
         }
         if (material == null) {
             try {
                 material = Bukkit.createBlockData(id).getMaterial();
-            } catch (IllegalArgumentException | LinkageError ignored) {
+            } catch (RuntimeException | LinkageError ignored) {
                 // It may be an item-only material; try Bukkit's legacy-compatible lookup next.
             }
         }
         if (material == null) {
-            material = Material.matchMaterial(id);
+            try {
+                material = Material.matchMaterial(id);
+            } catch (RuntimeException | LinkageError ignored) {
+                // Some hybrid Material implementations reject namespaced aliases.
+            }
         }
         if (material != null) {
             remember(material);
@@ -118,6 +123,35 @@ final class BukkitDynamicRegistries {
                         id,
                         state -> BukkitBlockStateProperties.applyProperties(state, defaultData.getAsString())
                 ));
+            }
+        }
+        return registered;
+    }
+
+    @Nullable
+    static ItemType resolveItemType(String requestedId) {
+        String id = requestedId.toLowerCase(Locale.ROOT);
+        ItemType registered = ItemType.REGISTRY.get(id);
+        if (registered != null) {
+            return registered;
+        }
+
+        Material material = resolveMaterial(id);
+        return material == null ? null : resolveItemType(material);
+    }
+
+    static ItemType resolveItemType(Material material) {
+        remember(material);
+        String id = material.getKey().toString();
+        ItemType registered = ItemType.REGISTRY.get(id);
+        if (registered != null) {
+            return registered;
+        }
+
+        synchronized (ItemType.REGISTRY) {
+            registered = ItemType.REGISTRY.get(id);
+            if (registered == null) {
+                registered = ItemType.REGISTRY.register(id, new ItemType(id));
             }
         }
         return registered;

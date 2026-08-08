@@ -28,6 +28,20 @@ import javax.annotation.Nullable;
 public interface ItemRegistry {
 
     /**
+     * Resolve and, if necessary, register a platform item type by its namespaced ID.
+     *
+     * <p>Platforms with dynamic registries, such as hybrid modded servers, can expose
+     * items which were not present while WorldEdit was starting.</p>
+     *
+     * @param id namespaced item ID
+     * @return the resolved item type, or null when the platform does not know it
+     */
+    @Nullable
+    default ItemType resolveItemType(String id) {
+        return null;
+    }
+
+    /**
      * Gets the name for the given item.
      *
      * @param itemType the item

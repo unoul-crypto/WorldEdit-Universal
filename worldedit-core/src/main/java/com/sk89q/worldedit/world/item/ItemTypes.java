@@ -19,6 +19,9 @@
 
 package com.sk89q.worldedit.world.item;
 
+import com.sk89q.worldedit.WorldEdit;
+import com.sk89q.worldedit.extension.platform.Capability;
+
 import javax.annotation.Nullable;
 
 /**
@@ -1582,6 +1585,17 @@ public final class ItemTypes {
      * Gets the {@link ItemType} associated with the given id.
      */
     public static @Nullable ItemType get(String id) {
-        return ItemType.REGISTRY.get(id);
+        ItemType itemType = ItemType.REGISTRY.get(id);
+        if (itemType != null) {
+            return itemType;
+        }
+        if (!WorldEdit.getInstance().getPlatformManager().isInitialized()) {
+            return null;
+        }
+        return WorldEdit.getInstance().getPlatformManager()
+                .queryCapability(Capability.GAME_HOOKS)
+                .getRegistries()
+                .getItemRegistry()
+                .resolveItemType(id);
     }
 }

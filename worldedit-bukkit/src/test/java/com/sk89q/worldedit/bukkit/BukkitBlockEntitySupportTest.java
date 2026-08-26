@@ -67,6 +67,7 @@ class BukkitBlockEntitySupportTest {
         verify(targetInventory).setItem(0, storedItem);
     }
 
+    @SuppressWarnings("deprecation")
     private static void installMinimalBukkitServer() throws ReflectiveOperationException {
         UnsafeValues unsafeValues = mock(UnsafeValues.class);
         when(unsafeValues.getDataVersion()).thenReturn(0);

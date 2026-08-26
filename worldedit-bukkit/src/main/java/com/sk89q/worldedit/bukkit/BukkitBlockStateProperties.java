@@ -19,6 +19,7 @@
 
 package com.sk89q.worldedit.bukkit;
 
+import com.google.common.base.Splitter;
 import com.sk89q.worldedit.registry.state.BooleanProperty;
 import com.sk89q.worldedit.registry.state.DirectionalProperty;
 import com.sk89q.worldedit.registry.state.EnumProperty;
@@ -177,14 +178,14 @@ final class BukkitBlockStateProperties {
 
         Map<String, String> result = new LinkedHashMap<>();
         String body = serialized.substring(opening + 1, closing);
-        for (String entry : body.split(",")) {
+        for (String entry : Splitter.on(',').split(body)) {
             int separator = entry.indexOf('=');
             if (separator <= 0 || separator == entry.length() - 1) {
                 continue;
             }
             result.put(entry.substring(0, separator), entry.substring(separator + 1));
         }
-        return result;
+        return Collections.unmodifiableMap(result);
     }
 
     static BlockState applyProperties(BlockState state, String serialized) {

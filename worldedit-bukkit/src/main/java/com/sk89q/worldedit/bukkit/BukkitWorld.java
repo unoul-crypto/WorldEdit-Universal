@@ -284,6 +284,7 @@ public class BukkitWorld extends AbstractWorld {
         return type != null && generateBukkitTree(world, bukkitType, editSession, pt);
     }
 
+    @SuppressWarnings("deprecation")
     private boolean generateBukkitTree(World world, TreeType bukkitType,
                                        EditSession editSession, BlockVector3 position) {
         return world.generateTree(
